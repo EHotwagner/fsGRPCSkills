@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package myapp.v1;
+
+option csharp_namespace = "MyApp.V1";
+
+// A simple greeting service demonstrating all four RPC patterns.
+service Greeter {
+  // Unary RPC — single request, single response.
+  rpc SayHello (GreetRequest) returns (GreetReply);
+
+  // Server streaming — single request, stream of responses.
+  rpc SayHelloStream (GreetRequest) returns (stream GreetReply);
+
+  // Client streaming — stream of requests, single response.
+  rpc CollectGreetings (stream GreetRequest) returns (GreetSummary);
+
+  // Bidirectional streaming — streams in both directions.
+  rpc Chat (stream ChatMessage) returns (stream ChatMessage);
+}
+
+// Request message for greeting RPCs.
+message GreetRequest {
+  // The name to greet.
+  string name = 1;
+}
+
+// Response message from the greeting service.
+message GreetReply {
+  // The greeting message.
+  string message = 1;
+}
+
+// Summary returned after collecting multiple greetings.
+message GreetSummary {
+  // Total number of greetings received.
+  int32 count = 1;
+  // Combined greeting message.
+  string summary = 2;
+}
+
+// A chat message for bidirectional streaming.
+message ChatMessage {
+  // User who sent the message.
+  string user = 1;
+  // Message text.
+  string text = 2;
+}
