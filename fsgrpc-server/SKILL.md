@@ -16,7 +16,8 @@ Implement and host gRPC services using ASP.NET Core in F#.
 
 This skill covers implementing gRPC server services in F#, for both code-first
 (protobuf-net.Grpc) and contract-first (FsGrpc / standard) approaches. The
-server runs on ASP.NET Core with Kestrel, supporting HTTP/2 for gRPC.
+server runs on ASP.NET Core with Kestrel, supporting HTTP/2 for native gRPC
+and gRPC-Web for browser clients.
 
 ## Workflow
 
@@ -34,6 +35,8 @@ server runs on ASP.NET Core with Kestrel, supporting HTTP/2 for gRPC.
     <PackageReference Include="protobuf-net-fsharp" Version="0.1.0" />
     <!-- OR Contract-first (standard) -->
     <PackageReference Include="Grpc.AspNetCore" Version="2.67.0" />
+    <!-- gRPC-Web support (works with either approach) -->
+    <PackageReference Include="Grpc.AspNetCore.Web" Version="2.67.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.fsproj" />
@@ -184,7 +187,92 @@ app.MapGrpcService<GreeterServiceImpl>() |> ignore
 app.Run()
 ```
 
-### 6. Add server reflection (development)
+### 6. Enable gRPC-Web
+
+gRPC-Web lets browser clients (JavaScript/TypeScript, Blazor WASM) call gRPC
+services over HTTP/1.1. Native gRPC requires HTTP/2 with trailers, which
+browsers don't expose — gRPC-Web bridges that gap.
+
+#### Add the middleware
+
+```fsharp
+open Grpc.AspNetCore.Web
+
+let app = builder.Build()
+
+// Enable gRPC-Web for all services (before MapGrpcService calls)
+app.UseGrpcWeb(GrpcWebOptions(DefaultEnabled = true)) |> ignore
+
+app.MapGrpcService<GreeterService>() |> ignore
+```
+
+Or enable per-service instead of globally:
+
+```fsharp
+app.UseGrpcWeb() |> ignore
+
+app.MapGrpcService<GreeterService>().EnableGrpcWeb() |> ignore
+app.MapGrpcService<InternalService>() |> ignore  // gRPC-Web NOT enabled
+```
+
+#### Configure Kestrel for HTTP/1.1 + HTTP/2
+
+gRPC-Web traffic arrives over HTTP/1.1, so Kestrel must accept both protocols:
+
+```fsharp
+builder.WebHost.ConfigureKestrel(fun options ->
+    options.ListenLocalhost(5000, fun listenOptions ->
+        listenOptions.Protocols <-
+            Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2
+    )
+) |> ignore
+```
+
+> **Note:** With `Http1AndHttp2`, native gRPC clients still negotiate HTTP/2
+> automatically. Only use `Http2` alone when you are certain no browser clients
+> will connect.
+
+#### Add CORS for browser clients
+
+Browser gRPC-Web requests are cross-origin and require CORS:
+
+```fsharp
+open Microsoft.Extensions.DependencyInjection
+
+builder.Services.AddCors(fun options ->
+    options.AddPolicy("GrpcWeb", fun policy ->
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .WithExposedHeaders("Grpc-Status", "Grpc-Message", "Grpc-Encoding", "Grpc-Accept-Encoding")
+        |> ignore
+    )
+) |> ignore
+
+let app = builder.Build()
+
+app.UseCors("GrpcWeb") |> ignore
+app.UseGrpcWeb(GrpcWebOptions(DefaultEnabled = true)) |> ignore
+
+app.MapGrpcService<GreeterService>().RequireCors("GrpcWeb") |> ignore
+```
+
+For production, replace `AllowAnyOrigin()` with `WithOrigins("https://myapp.com")`.
+
+#### Contract-first gRPC-Web
+
+The middleware works identically with contract-first services:
+
+```fsharp
+builder.Services.AddGrpc() |> ignore
+
+let app = builder.Build()
+app.UseGrpcWeb(GrpcWebOptions(DefaultEnabled = true)) |> ignore
+app.MapGrpcService<GreeterServiceImpl>() |> ignore
+```
+
+### 7. Add server reflection (development)
 
 Server reflection lets tools like `grpcurl` discover services:
 
@@ -198,7 +286,7 @@ app.MapGrpcReflectionService() |> ignore
 #endif
 ```
 
-### 7. Interceptors
+### 8. Interceptors
 
 ```fsharp
 open Grpc.Core
@@ -231,7 +319,7 @@ builder.Services.AddCodeFirstGrpc(fun options ->
 )
 ```
 
-### 8. Health checks
+### 9. Health checks
 
 ```fsharp
 builder.Services.AddGrpcHealthChecks()
@@ -240,7 +328,7 @@ builder.Services.AddGrpcHealthChecks()
 |> ignore
 ```
 
-### 9. Error handling
+### 10. Error handling
 
 Use `RpcException` with standard gRPC status codes:
 
@@ -276,7 +364,9 @@ Standard gRPC status codes for F#:
 - **DO** check `context.CancellationToken` in long-running operations
 - **DO** use gRPC status codes, not HTTP status codes
 - **DO** add server reflection in development for debugging with grpcurl
-- **DO** configure HTTP/2 explicitly on Kestrel
+- **DO** configure HTTP/2 explicitly on Kestrel (use `Http1AndHttp2` when serving gRPC-Web)
+- **DO** add CORS when exposing gRPC-Web to browser clients
+- **DO** place `UseGrpcWeb()` before `MapGrpcService` calls in the pipeline
 - **DON'T** throw generic exceptions; use `RpcException` with appropriate status codes
 - **DON'T** return `null` from service methods; always return a valid response
 - **DON'T** block the thread with `.Result` or `.Wait()`; use `task {}` or `vtask {}`
@@ -290,9 +380,10 @@ Standard gRPC status codes for F#:
 ## Implementation Workflow
 
 1. Create server project with `Microsoft.NET.Sdk.Web`
-2. Add gRPC NuGet packages and project reference to shared contracts
+2. Add gRPC NuGet packages (including `Grpc.AspNetCore.Web`) and project reference to shared contracts
 3. Register F# types (code-first only)
 4. Implement service class(es)
-5. Configure host with gRPC services
-6. Add interceptors, health checks, reflection as needed
-7. Run and verify with `grpcurl` or a test client
+5. Configure host with gRPC services and gRPC-Web middleware
+6. Add CORS policy if serving browser clients
+7. Add interceptors, health checks, reflection as needed
+8. Run and verify with `grpcurl`, a test client, or browser gRPC-Web client

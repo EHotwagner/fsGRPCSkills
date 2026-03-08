@@ -53,18 +53,82 @@ builder.WebHost.ConfigureKestrel(fun options ->
 )
 ```
 
-### HTTP/2 + HTTP/1.1 (for gRPC-Web compatibility)
+### gRPC-Web support
+
+gRPC-Web translates browser-compatible HTTP/1.1 requests into standard gRPC
+calls on the server. The `Grpc.AspNetCore.Web` middleware handles the
+protocol translation transparently — no service code changes required.
 
 ```fsharp
+open Grpc.AspNetCore.Web
+
+// Kestrel must accept HTTP/1.1 for browser traffic
 builder.WebHost.ConfigureKestrel(fun options ->
     options.ListenLocalhost(5000, fun o ->
         o.Protocols <-
             Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2
     )
-)
-// Also add gRPC-Web middleware
-app.UseGrpcWeb(GrpcWebOptions(DefaultEnabled = true)) |> ignore
+) |> ignore
 ```
+
+#### Global gRPC-Web (all services)
+
+```fsharp
+app.UseGrpcWeb(GrpcWebOptions(DefaultEnabled = true)) |> ignore
+app.MapGrpcService<GreeterService>() |> ignore
+```
+
+#### Per-service gRPC-Web
+
+```fsharp
+app.UseGrpcWeb() |> ignore
+app.MapGrpcService<PublicService>().EnableGrpcWeb() |> ignore
+app.MapGrpcService<InternalService>() |> ignore  // native gRPC only
+```
+
+#### CORS for browser clients
+
+Browsers enforce same-origin policy. gRPC-Web requests from a different origin
+need explicit CORS headers:
+
+```fsharp
+builder.Services.AddCors(fun options ->
+    options.AddPolicy("GrpcWeb", fun policy ->
+        policy
+            .WithOrigins("https://myapp.com")  // or .AllowAnyOrigin() for dev
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .WithExposedHeaders(
+                "Grpc-Status", "Grpc-Message",
+                "Grpc-Encoding", "Grpc-Accept-Encoding")
+        |> ignore
+    )
+) |> ignore
+
+let app = builder.Build()
+app.UseCors("GrpcWeb") |> ignore
+app.UseGrpcWeb(GrpcWebOptions(DefaultEnabled = true)) |> ignore
+app.MapGrpcService<GreeterService>().RequireCors("GrpcWeb") |> ignore
+```
+
+#### Streaming limitations
+
+gRPC-Web supports server streaming but does **not** support client streaming
+or bidirectional streaming. If your service uses these patterns, browser clients
+must fall back to alternative transports (e.g., WebSockets, SSE). Native gRPC
+clients are unaffected.
+
+| Pattern | Native gRPC | gRPC-Web (browser) |
+|---------|-------------|-------------------|
+| Unary | Yes | Yes |
+| Server streaming | Yes | Yes |
+| Client streaming | Yes | No |
+| Bidirectional | Yes | No |
+
+#### Combined native + gRPC-Web endpoint
+
+With `Http1AndHttp2`, a single port serves both native gRPC (HTTP/2) and
+gRPC-Web (HTTP/1.1) clients simultaneously. No separate ports needed.
 
 ## Service Implementation Patterns
 
