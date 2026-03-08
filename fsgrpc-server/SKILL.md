@@ -1,5 +1,5 @@
 ---
-name: grpc-server
+name: fsgrpc-server
 description: >-
   Use when the user asks to "implement a gRPC server", "create gRPC service
   implementation", "host a gRPC service", "write gRPC server in F#",

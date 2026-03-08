@@ -6,11 +6,11 @@ Agent skills for using and creating gRPC from F#. Covers both **code-first** (pr
 
 | Skill | Description |
 |-------|-------------|
-| [grpc-setup](grpc-setup/SKILL.md) | Bootstrap gRPC tooling — choose an approach, add packages, scaffold project structure |
-| [grpc-proto](grpc-proto/SKILL.md) | Write `.proto` files and generate idiomatic F# code (FsGrpc / Grpc.Tools) |
-| [grpc-codefirst](grpc-codefirst/SKILL.md) | Define gRPC contracts with native F# records and interfaces (protobuf-net.Grpc) |
-| [grpc-server](grpc-server/SKILL.md) | Implement and host gRPC services on ASP.NET Core |
-| [grpc-client](grpc-client/SKILL.md) | Consume gRPC services from F# client code |
+| [fsgrpc-setup](fsgrpc-setup/SKILL.md) | Bootstrap gRPC tooling — choose an approach, add packages, scaffold project structure |
+| [fsgrpc-proto](fsgrpc-proto/SKILL.md) | Write `.proto` files and generate idiomatic F# code (FsGrpc / Grpc.Tools) |
+| [fsgrpc-codefirst](fsgrpc-codefirst/SKILL.md) | Define gRPC contracts with native F# records and interfaces (protobuf-net.Grpc) |
+| [fsgrpc-server](fsgrpc-server/SKILL.md) | Implement and host gRPC services on ASP.NET Core |
+| [fsgrpc-client](fsgrpc-client/SKILL.md) | Consume gRPC services from F# client code |
 
 ## Approaches
 
@@ -79,23 +79,23 @@ dotnet test
 
 ```
 fsGRPCSkills/
-├── grpc-setup/              # Project bootstrapping
+├── fsgrpc-setup/            # Project bootstrapping
 │   ├── SKILL.md
 │   ├── scripts/setup-grpc.sh
 │   └── templates/
-├── grpc-proto/              # .proto files and code generation
+├── fsgrpc-proto/            # .proto files and code generation
 │   ├── SKILL.md
 │   ├── references/proto3-types.md
 │   └── templates/
-├── grpc-codefirst/          # Code-first contracts
+├── fsgrpc-codefirst/        # Code-first contracts
 │   ├── SKILL.md
 │   ├── references/codefirst-patterns.md
 │   └── templates/
-├── grpc-server/             # Server implementation
+├── fsgrpc-server/           # Server implementation
 │   ├── SKILL.md
 │   ├── references/server-patterns.md
 │   └── templates/
-├── grpc-client/             # Client implementation
+├── fsgrpc-client/           # Client implementation
 │   ├── SKILL.md
 │   ├── references/client-patterns.md
 │   └── templates/

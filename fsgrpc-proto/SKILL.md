@@ -1,5 +1,5 @@
 ---
-name: grpc-proto
+name: fsgrpc-proto
 description: >-
   Use when the user asks to "write a proto file", "create protobuf definitions",
   "generate F# from proto", "set up proto compilation", "define gRPC service

@@ -1,5 +1,5 @@
 ---
-name: grpc-client
+name: fsgrpc-client
 description: >-
   Use when the user asks to "call a gRPC service", "create gRPC client",
   "consume gRPC service from F#", "connect to gRPC server", "write gRPC

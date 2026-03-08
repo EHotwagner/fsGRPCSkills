@@ -1,5 +1,5 @@
 ---
-name: grpc-setup
+name: fsgrpc-setup
 description: >-
   Use when the user asks to "set up gRPC", "add gRPC to my F# project",
   "initialize gRPC", "configure gRPC tooling", "install gRPC packages",

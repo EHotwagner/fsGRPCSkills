@@ -1,5 +1,5 @@
 ---
-name: grpc-codefirst
+name: fsgrpc-codefirst
 description: >-
   Use when the user asks to "create gRPC without proto files", "code-first gRPC",
   "define gRPC service in F#", "use protobuf-net with F#", "gRPC with F# records",
@@ -252,4 +252,4 @@ module ServiceResult =
 3. Define service interfaces with `[<ServiceContract>]`
 4. Register F# types in both server and client startup
 5. Build and verify all contracts compile
-6. Implement server (see grpc-server skill) and client (see grpc-client skill)
+6. Implement server (see fsgrpc-server skill) and client (see fsgrpc-client skill)
