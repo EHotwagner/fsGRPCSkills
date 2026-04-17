@@ -19,7 +19,7 @@ three approaches and helps the user choose the right one:
 
 | Approach | When to use | Key packages |
 |----------|-------------|--------------|
-| **Contract-first (FsGrpc)** | Existing .proto files, want idiomatic F# records & DUs | `FsGrpc`, `FsGrpc.Tools`, `buf` CLI |
+| **Contract-first (FsGrpc)** | Existing .proto files, want idiomatic F# records & DUs | `FsGrpc`, `buf` CLI, `protoc-gen-fsgrpc` on PATH |
 | **Contract-first (standard)** | Existing .proto files, okay with C# interop types | `Grpc.AspNetCore`, `Google.Protobuf`, `Grpc.Tools` |
 | **Code-first (protobuf-net)** | No .proto files, F#-native types as contracts | `protobuf-net.Grpc.AspNetCore`, `protobuf-net.Grpc`, `protobuf-net-fsharp` |
 
@@ -41,22 +41,35 @@ Ask the user:
 ```xml
 <ItemGroup>
   <PackageReference Include="FsGrpc" Version="1.0.6" />
-  <PackageReference Include="FsGrpc.Tools" Version="1.0.6"
-                    PrivateAssets="all" IncludeAssets="build" />
 </ItemGroup>
 ```
 
-Requires the `buf` CLI installed:
+> **Do not** add a `FsGrpc.Tools` PackageReference. Earlier versions of this
+> skill recommended `FsGrpc.Tools 1.0.6` with MSBuild auto-generation, but
+> that package is not published on nuget.org (highest is `0.6.3`) and its
+> MSBuild targets still expect `protoc-gen-fsgrpc` to be resolvable on
+> PATH. Use the manual generation workflow described in `fsgrpc-proto`
+> instead — it is the only reproducible path at the time of writing.
+
+Requires the `buf` CLI **and** the `protoc-gen-fsgrpc` plugin installed:
 
 ```bash
-# Install buf (https://buf.build/docs/installation)
+# 1. Install buf (https://buf.build/docs/installation)
 # macOS
 brew install bufbuild/buf/buf
 # Linux
 curl -sSL https://github.com/bufbuild/buf/releases/latest/download/buf-Linux-x86_64 -o /usr/local/bin/buf && chmod +x /usr/local/bin/buf
 # Or via npm
 npm install -g @bufbuild/buf
+
+# 2. Install the F# protoc plugin. No prebuilt binary is published for this
+#    plugin, so the helper script in this skill builds it from source against
+#    a pinned dmgtech/fsgrpc commit and installs a wrapper on PATH:
+./fsgrpc-setup/scripts/install-protoc-gen-fsgrpc.sh
 ```
+
+See `fsgrpc-setup/scripts/install-protoc-gen-fsgrpc.sh --help` for why this
+extra step is necessary and how to pin the source ref / target framework.
 
 #### Contract-first with standard tooling
 
@@ -180,7 +193,8 @@ buf --version
 - **DO** pin package versions in production projects
 - **DON'T** mix contract-first and code-first in the same service
 - **DON'T** use standard Grpc.Tools directly in F# projects; use a C# intermediary or FsGrpc
-- **DON'T** forget to install the buf CLI when using FsGrpc
+- **DON'T** forget to install the buf CLI **and** `protoc-gen-fsgrpc` (via
+  `scripts/install-protoc-gen-fsgrpc.sh`) when using FsGrpc — both are required
 
 ## Additional Resources
 
@@ -189,13 +203,13 @@ buf --version
 - [protobuf-net-fsharp](https://github.com/mlivernoche/protobuf-net-fsharp)
 - [FsGrpc](https://github.com/mzgkits/FsGrpc)
 - Templates: `templates/codefirst.fsproj`, `templates/contractfirst.fsproj`
-- Script: `scripts/setup-grpc.sh`
+- Scripts: `scripts/setup-grpc.sh`, `scripts/install-protoc-gen-fsgrpc.sh`
 
 ## Implementation Workflow
 
 1. Determine approach (contract-first vs code-first)
 2. Create solution and project structure
 3. Add NuGet package references
-4. Install external tooling if needed (buf CLI for FsGrpc)
+4. Install external tooling if needed (buf CLI + `protoc-gen-fsgrpc` for FsGrpc)
 5. Register F# serializer if using protobuf-net
 6. Run `dotnet build` to verify
