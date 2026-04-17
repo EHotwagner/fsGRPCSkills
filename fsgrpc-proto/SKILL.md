@@ -171,29 +171,41 @@ lint:
 
 #### Run generation
 
-FsGrpc integrates with MSBuild. After adding the NuGet packages, simply build:
+Generation is an explicit `buf generate` step. Earlier versions of this skill
+claimed `FsGrpc.Tools` hooks into MSBuild and regenerates on `dotnet build`;
+that is incorrect for currently-available tooling — `FsGrpc.Tools 1.0.6` is
+not published on nuget.org and the published `0.6.3` still requires the
+`protoc-gen-fsgrpc` plugin binary on PATH, so MSBuild cannot bootstrap
+generation on a clean machine on its own.
 
-```bash
-dotnet build
-```
+Prerequisites:
+  * `buf` on PATH (see `fsgrpc-setup` skill for install commands).
+  * `protoc-gen-fsgrpc` on PATH. Install with
+    `fsgrpc-setup/scripts/install-protoc-gen-fsgrpc.sh` — that script builds
+    the plugin from a pinned `dmgtech/fsgrpc` commit, patches it to match
+    `FsGrpc 1.0.6` runtime, and drops a wrapper into `$HOME/.local/bin/`.
 
-The `FsGrpc.Tools` package hooks into MSBuild to invoke `buf` and generate
-F# source files automatically.
-
-#### Manual generation (if needed)
-
-```bash
-buf generate --template buf.gen.yaml Protos/
-```
-
-With `buf.gen.yaml`:
+With `buf.gen.yaml` at the root of your `Protos/` workspace:
 
 ```yaml
 version: v1
 plugins:
   - plugin: fsgrpc
-    out: Generated
+    out: ../Generated          # relative to buf.gen.yaml's directory
+    opt:
+      - paths=source_relative
 ```
+
+Then:
+
+```bash
+cd Protos/
+buf generate
+```
+
+Commit the generated `.fs` files to source control so downstream consumers
+can `dotnet build` without needing the plugin installed. Re-run
+`buf generate` whenever a `.proto` file changes.
 
 ### 5. Generated F# code patterns (FsGrpc)
 
